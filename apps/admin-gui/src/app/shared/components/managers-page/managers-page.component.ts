@@ -11,6 +11,8 @@ import { TABLE_GROUP_MANAGERS_PAGE } from '@perun-web-apps/config/table-config';
 import { getDefaultDialogConfig } from '@perun-web-apps/perun/utils';
 import { GuiAuthResolver, StoreService } from '@perun-web-apps/perun/services';
 import { MatTabChangeEvent } from '@angular/material/tabs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ReloadEntityDetailService } from '../../../core/services/common/reload-entity-detail.service';
 
 @Component({
   selector: 'app-managers-page',
@@ -25,7 +27,10 @@ export class ManagersPageComponent implements OnInit {
     private dialog: MatDialog,
     private authzService: AuthzResolverService,
     private storeService: StoreService,
-    public guiAuthResolver: GuiAuthResolver
+    public guiAuthResolver: GuiAuthResolver,
+    private router: Router,
+    private reloadEntityDetail: ReloadEntityDetailService,
+    private route: ActivatedRoute,
   ) {
   }
 
@@ -77,6 +82,7 @@ export class ManagersPageComponent implements OnInit {
 
   ngOnInit() {
     this.loading = true;
+    this.routeAuth = this.guiAuthResolver.isPerunAdminOrObserver();
 
     this.guiAuthResolver.getRolesAuthorization(this.availableRoles, this.complementaryObject, this.availableRolesPrivileges);
     this.availableRoles = this.availableRoles.filter(role => this.availableRolesPrivileges.get(role).readAuth);
@@ -84,15 +90,16 @@ export class ManagersPageComponent implements OnInit {
     if (this.availableRoles.length !== 0){
       this.selectedRole = this.availableRoles[0];
     }
-
-    this.routeAuth = this.guiAuthResolver.isPerunAdminOrObserver();
     this.refreshUsers();
   }
 
   changeRolePrivileges() {
+    this.guiAuthResolver.getRolesAuthorization(this.availableRoles, this.complementaryObject, this.availableRolesPrivileges);
+    this.availableRoles = this.availableRoles.filter(role => this.availableRolesPrivileges.get(role).readAuth);
+
     this.manageAuth = this.availableRolesPrivileges.get(this.selectedRole).manageAuth;
-    this.displayedUserColumns = this.manageAuth ? this.displayedUserColumns : this.displayedUserColumns.filter(col => col === 'select');
-    this.displayedGroupColumns = this.manageAuth ? this.displayedGroupColumns : this.displayedGroupColumns.filter(col => col === 'select');
+    this.displayedUserColumns = this.manageAuth ? this.displayedUserColumns : this.displayedUserColumns.filter(col => col !== 'select');
+    this.displayedGroupColumns = this.manageAuth ? this.displayedGroupColumns : this.displayedGroupColumns.filter(col => col !== 'select');
     this.roleModes = this.availableRolesPrivileges.get(this.selectedRole).modes;
     let roleHasThisMode = false;
     for (const mode of this.roleModes){
@@ -182,7 +189,12 @@ export class ManagersPageComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.refreshUsers();
+        if(this.guiAuthResolver.isManagerPagePrivileged(this.complementaryObject)) {
+          this.reloadEntityDetail.reloadEntityDetail();
+          this.refreshUsers();
+        } else {
+          this.redirectToAuthRoute();
+        }
       }
     });
   }
@@ -201,7 +213,12 @@ export class ManagersPageComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.refreshGroups();
+        if(this.guiAuthResolver.isManagerPagePrivileged(this.complementaryObject)) {
+          this.reloadEntityDetail.reloadEntityDetail();
+          this.refreshGroups();
+        } else {
+          this.redirectToAuthRoute();
+        }
       }
     });
   }
@@ -223,4 +240,32 @@ export class ManagersPageComponent implements OnInit {
       }
     });
   }
+
+  redirectToAuthRoute() {
+    if(this.complementaryObjectType === 'Group' &&
+      (this.guiAuthResolver.isAuthorized('getGroupById_int_policy', [this.complementaryObject]) ||
+        this.guiAuthResolver.isAuthorized('getVoById_int_policy', [this.complementaryObject]))) {
+      if(this.guiAuthResolver.isAuthorized('getGroupById_int_policy', [this.complementaryObject])) {
+        // @ts-ignore
+        this.router.navigate(['/organizations', this.complementaryObject.voId, 'groups', this.complementaryObject.id], { relativeTo: this.route, queryParamsHandling: 'merge'});
+      } else if(this.guiAuthResolver.isAuthorized('getVoById_int_policy', [this.complementaryObject])) {
+        // @ts-ignore
+        this.router.navigate(['/organizations', this.complementaryObject.voId], {queryParamsHandling: 'merge'});
+      }
+    } else if (this.complementaryObjectType === 'Facility' &&
+      this.guiAuthResolver.isAuthorized('getFacilityById_int_policy', [this.complementaryObject])) {
+      this.router.navigate(['/facilities', this.complementaryObject.id], { relativeTo: this.route, queryParamsHandling: 'merge'});
+    } else if (this.complementaryObjectType === 'Vo' &&
+              this.guiAuthResolver.isAuthorized('getVoById_int_policy', [this.complementaryObject])) {
+      this.router.navigate(['/organizations', this.complementaryObject.id], { relativeTo: this.route, queryParamsHandling: 'merge'});
+    } else if (this.complementaryObjectType === 'Resource' &&
+               this.guiAuthResolver.isAuthorized('getRichResourceById_int_policy', [this.complementaryObject])) {
+      this.router.navigate(['../../'], { relativeTo: this.route, queryParamsHandling: 'merge'});
+    } else {
+      this.router.navigate(['/home'], {queryParamsHandling: 'merge'});
+      return;
+    }
+    this.reloadEntityDetail.reloadEntityDetail();
+  }
+
 }
