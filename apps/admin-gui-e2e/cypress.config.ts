@@ -43,5 +43,5 @@ export default defineConfig({
     },
     specPattern: 'src/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: false,
-  },
+  }
 });
