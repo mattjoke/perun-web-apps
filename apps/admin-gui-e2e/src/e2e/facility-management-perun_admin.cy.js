@@ -19,17 +19,16 @@ context('Actions', () => {
   });
 
   beforeEach(() => {
+    cy.intercept('**/facilitiesManager/getEnrichedFacilities**')
+      .as('getEnrichedFacilities')
     cy.visit('home')
       .get(`[data-cy=facilities-button]`)
       .click();
   });
 
   it('test create facility', () => {
-    cy.intercept('**/facilitiesManager/getFacilities')
-      .as('getFacilities')
-      .get('[data-cy=new-facility-button]')
+    cy.wait('@getEnrichedFacilities').get('[data-cy=new-facility-button]')
       .click()
-      .wait('@getFacilities')
       .get('[data-cy=facility-name-input]')
       .type('test-e2e-facility')
       .get('[data-cy=facility-description-input]')
@@ -37,8 +36,8 @@ context('Actions', () => {
       .get('[data-cy=create-facility-button]')
       .click()
       .intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .wait('@getEnrichedFacilities')
+      .as('getEnrichedFacilitiesNew')
+      .wait('@getEnrichedFacilitiesNew')
       // assert that the facility was created
       .get('[data-cy=auto-focused-filter]')
       .type('test-e2e-facility')
@@ -47,9 +46,7 @@ context('Actions', () => {
   });
 
   it('test delete facility', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .wait('@getEnrichedFacilities')
+    cy.wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
       .type(dbFacilityName1)
       .get(`[data-cy=${dbFacilityName1}-checkbox]`)
@@ -64,9 +61,7 @@ context('Actions', () => {
   });
 
   it('test create resource', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .intercept('**/vosManager/getAllVos')
+    cy.intercept('**/vosManager/getAllVos')
       .as('getAllVos')
       .wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
@@ -89,7 +84,7 @@ context('Actions', () => {
       .type('test-e2e-resource')
       .get('[data-cy=create-resource-dialog-button]')
       .click()
-      .intercept('**/facilitiesManager/getAssignedRichResources?**')
+      .intercept('**/facilitiesManager/getAssignedRichResources**')
       .as('getAssignedResources')
       .wait('@getAssignedResources')
       .get('[data-cy=unfocused-filter]')
@@ -99,9 +94,7 @@ context('Actions', () => {
   });
 
   it('test delete resource', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .intercept('**/facilitiesManager/getAssignedRichResources?**')
+    cy.intercept('**/facilitiesManager/getAssignedRichResources?**')
       .as('getAssignedResources')
       .wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
@@ -125,9 +118,7 @@ context('Actions', () => {
   });
 
   it('test add attribute', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .wait('@getEnrichedFacilities')
+    cy.wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
       .type(dbFacilityName2)
       .get(`[data-cy=${dbFacilityName2}]`)
@@ -153,9 +144,7 @@ context('Actions', () => {
   });
 
   it('test delete attribute', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .wait('@getEnrichedFacilities')
+    cy.wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
       .type(dbFacilityName2)
       .get(`[data-cy=${dbFacilityName2}]`)
@@ -179,9 +168,7 @@ context('Actions', () => {
   });
 
   it('test add facility manager', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .intercept('**/usersManager/findRichUsersWithAttributes?**')
+    cy.intercept('**/usersManager/findRichUsersWithAttributes?**')
       .as('findRichUsers')
       .wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
@@ -212,9 +199,7 @@ context('Actions', () => {
   });
 
   it('test remove facility manager', () => {
-    cy.intercept('**/facilitiesManager/getEnrichedFacilities')
-      .as('getEnrichedFacilities')
-      .wait('@getEnrichedFacilities')
+    cy.wait('@getEnrichedFacilities')
       .get('[data-cy=auto-focused-filter]')
       .type(dbFacilityName2)
       .get(`[data-cy=${dbFacilityName2}]`)
